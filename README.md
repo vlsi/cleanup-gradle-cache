@@ -27,6 +27,25 @@ allprojects {
 }
 ```
 
+Why should I use it?
+----------------
+
+The motivation to build the tool was cache corruption for `pgjdbc` and `Apache Calcite` projects at Travis CI.
+Of course, the corruption is not often, however, it is annoying to clean the cache manually every time.
+
+Here's a sample from `pgjdbc` analysis: https://github.com/gradle/gradle/issues/14774#issuecomment-709341046
+
+If you see the following error in your build logs, then you are likely hit by this error:
+
+```
+> Task :...:compileJava
+error: error reading /home/travis/.gradle/caches/modules-2/files-2.1/....jar; error in opening zip file
+```
+
+You might detect broken archives if you use [checksum-dependency-plugin](https://github.com/vlsi/vlsi-release-plugins/tree/master/plugins/checksum-dependency-plugin)
+or [Gradle Dependency Verification](https://docs.gradle.org/current/userguide/dependency_verification.html) feature.
+
+
 Recommended configuration for Travis CI
 ---------------------------------------
 
@@ -102,6 +121,25 @@ Usage: java CleanupGradleCache [options]
   --keep-user-id      (default: false) keep user-id.txt and user-id.txt.lock files
   --keep-unzipped-distributions (default: false) keep transforms-2/.../unzipped-distributions
   --verify-checksums  (default: true) verify checksums for files in caches/modules-2/files-2.1
+```
+
+Why Java?
+---------
+
+Well, initially I tried to implement the script with `find` + `xargs` as follows, however, the list of avaliable options
+differs between BSD and non-BSD utilities, so it turned out Java-based implementation is easier to test across different platforms.
+
+```bash
+echo Collecting files to verify
+find ~/.gradle/caches/modules-2/files-2.1 -type f -print |
+  awk -F '/' '$(NF-1) ~ /^[0-9a-f]+$/ { print sprintf("%040s", $(NF-1))" *"$0 }' > checksum.txt
+
+echo Verifying checksums
+# rev | cut | rev  cuts ': FAILURE' from the end of the string
+shasum -c checksum.txt | grep -v ': OK' | rev | cut -c9- | rev > badfiles.txt
+
+echo Removing invalid files
+cat badfiles.txt | tr '\n' '\0' | xargs -0 rm -v
 ```
 
 License
