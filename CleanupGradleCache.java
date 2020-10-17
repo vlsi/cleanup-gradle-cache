@@ -11,6 +11,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Comparator;
 import java.util.Properties;
 import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
@@ -237,6 +238,9 @@ public class CleanupGradleCache {
     ForkJoinPool pool = ForkJoinPool.commonPool();
     try (Stream<Path> walk = Files.walk(files21)) {
       walk.parallel().forEach(file -> pool.execute(() -> verifyChecksum(file)));
+    }
+    if (!pool.awaitQuiescence(120, TimeUnit.SECONDS)) {
+      System.out.println("There are " + pool.getQueuedTaskCount() + " tasks still executing in " + pool);
     }
   }
 

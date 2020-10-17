@@ -148,6 +148,9 @@ Apache License 2.0
 
 Change log
 ----------
+v1.1
+* Wait for the checksums to be computed for 120sec
+
 v1.0
 * Initial release
 
